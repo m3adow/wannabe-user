@@ -1,9 +1,44 @@
 #!/bin/sh
 set -e
 set -u
+set -x
+
+[ $(id -u) -eq 0 ] || {
+    printf >&2 '%s requires root\n' "$0"
+		    exit 1
+}
 
 usage(){
-	printf "Usage: ./%s -u SOURCE_UID -g SOURCE_GID [-x- NEW_UID -y NEW_GID] [-f OWNERSHIP_PATH]" "$0"
+	printf "Usage: ./%s -u SOURCE_UID -g SOURCE_GID [-x- NEW_UID -y NEW_GID] [-f OWNERSHIP_PATH] [-r ROOT_FORCE]" "$0"
+}
+
+alltrap(){
+	RET=$?
+	if [ "${RET}" -ne 0 ]
+	then
+		printf "wannabe-user.sh finished with code '%s'.\n" "${RET}"
+	fi
+
+	exec "$@"
+}
+
+analyze(){
+	if [ -n "${SOURCE_UID}" ] 
+	then
+		[ "${SOURCE_UID}" -eq 0 ] && root_force
+	fi
+	if [ -n "${SOURCE_GID}" ]
+	then
+		[ "${SOURCE_GID}" -eq 0 ] && root_force
+	fi
+	if [ -n "${NEW_UID}" ]
+	then
+		[ "${NEW_UID}" -eq 0 ] && root_force
+	fi
+	if [ -n "${NEW_GID}" ]
+	then
+		[ "${NEW_GID}" -eq 0 ] && root_force
+	fi
 }
 
 change_ids() {
@@ -25,7 +60,17 @@ change_ids() {
 	then
 		chown_find "${SOURCE_STRING}" "${NEW_STRING}"
 	else
-		exit 1
+		return 0
+	fi
+}
+
+root_force(){
+	if [ -n "${ROOT_FORCE}" ]
+	then
+		printf "!!! ROOT_FORCE enabled !!!\n"
+	else
+		printf >&2 'Detected root ID without ROOT_FORCE. Aborting.\n'
+		exit 10
 	fi
 }
 
@@ -49,9 +94,10 @@ SOURCE_GID=${SOURCE_GID-}
 NEW_UID=${NEW_UID-}
 NEW_GID=${NEW_GID-}
 OWNERSHIP_PATH=${OWNERSHIP_PATH-}
+ROOT_FORCE=${ROOT_FORCE-}
 
 
-while getopts ":u:g:x:y:f:m" opt
+while getopts ":u:g:x:y:f:mr" opt
 do
 	case $opt in
 		u) SOURCE_UID="${OPTARG}"
@@ -64,12 +110,17 @@ do
 		;;
 		f) OWNERSHIP_PATH="${OPTARG}"
 		;;
+		r) ROOT_FORCE=1
+		;;
 		*) usage
 		;;
 	esac
 done
 # Shift all the Opts out to pass a clean $@ to the real CMD after execution
 shift $((OPTIND-1))
+
+# always exec $@ after this point
+trap 'alltrap "$@"' EXIT
 
 SOURCE_STRING=
 NEW_STRING=
@@ -78,9 +129,7 @@ if [ -n "$OWNERSHIP_PATH" ]
 then
 	NEW_UID=$(stat -c "%u" "${OWNERSHIP_PATH}")
 	NEW_GID=$(stat -c "%g" "${OWNERSHIP_PATH}")
-	change_ids
-else
-	change_ids
 fi
 
-exec "$@"
+analyze
+change_ids
