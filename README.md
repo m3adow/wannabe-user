@@ -6,7 +6,7 @@ A shell script tailored for containers intended to change UID/GID of the contain
 When running containers with mapped host volumes in Docker, every file in this volume belongs to the UID/GID it belongs on the host. This poses a problem for containers not running as root (like web servers), as those processes don't have write permissions for the volumes. That's where wannabe-user.sh steps in. It's intended as an `ENTRYPOINT` script in a Dockerfile to automatically map the container user to the host user
 
 ## Functionality
-`./wannabe-user.sh -u SOURCE_UID -g SOURCE_GID [-x- NEW_UID -y NEW_GID] [-f OWNERSHIP_PATH]`
+`./wannabe-user.sh -u SOURCE_UID -g SOURCE_GID [-x- NEW_UID -y NEW_GID] [-f OWNERSHIP_PATH] [-r ROOT_FORCE]`
 
 
 `wannabe-user.sh` has two operation modes: **ENV** mode and **OWNERSHIP** mode. Both modes can either be triggered by set environment variables or via commandline arguments. It's possible to set only UID, only GID or both.
@@ -18,7 +18,7 @@ ENV mode needs both variables for an ID set. Thus, setting the UID needs `SOURCE
 OWNERSHIP mode only needs the `SOURCE_` variables set as needed. Additionally it expects `OWNERSHIP_PATH` to point to a file whose UID/GID will be applied to the container user. This is intended to automatically map a container user to the IDs of the files on a volume.
 
 ## Usage
-`wannabe-user.sh` is intended to be run as an [`ENTRYPOINT`](https://docs.docker.com/engine/reference/builder/#entrypoint) script in a Dockerfile after being [`COPY`d](https://docs.docker.com/engine/reference/builder/#copy) or [`ADD`ed](https://docs.docker.com/engine/reference/builder/#add). Simple example, taken from my Dokuwiki container running the official `php:apache` image:
+`wannabe-user.sh` is intended to be run as an [`ENTRYPOINT`](https://docs.docker.com/engine/reference/builder/#entrypoint) script in a Dockerfile after being [`COPY`d](https://docs.docker.com/engine/reference/builder/#copy) or [`ADD`ed](https://docs.docker.com/engine/reference/builder/#add). It needs to be run as root. Simple example, taken from my Dokuwiki container running the official `php:apache` image:
 ```dockerfile
 FROM php:apache
 MAINTAINER m3adow
@@ -41,7 +41,5 @@ CMD ["/usr/local/bin/apache2-foreground"]
 
 This way the www-user (UID & GID 33) gets the same UID and GID as the directory `/var/www/html/conf` effectively granting the web server write permissions without any hassle.
 
-## Todo
-
-* Implement checking for UID/GID 0 of executing user
-* Implement only accepting 0 in variables if some (not yet implemented) force mechanic was enabled
+### UID/GID 0
+If for whatever reason you want to use the ID **0** either for SOURCE or for NEW, you have to additionally enable the `ROOT_FORCE` environment variable either by manually filling it (content doesn't matter, it just needs to be *not null*) or by using the `-r` switch.
