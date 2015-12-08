@@ -1,7 +1,6 @@
 #!/bin/sh
 set -e
 set -u
-set -x
 
 [ $(id -u) -eq 0 ] || {
     printf >&2 '%s requires root\n' "$0"
