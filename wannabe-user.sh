@@ -38,6 +38,7 @@ analyze(){
 	then
 		[ "${NEW_GID}" -eq 0 ] && root_force
 	fi
+	return 0
 }
 
 change_ids() {
@@ -66,7 +67,7 @@ change_ids() {
 root_force(){
 	if [ -n "${ROOT_FORCE}" ]
 	then
-		printf "!!! ROOT_FORCE enabled !!!\n"
+		printf '!!! ROOT_FORCE enabled !!!\n'
 	else
 		printf >&2 'Detected root ID without ROOT_FORCE. Aborting.\n'
 		exit 10
