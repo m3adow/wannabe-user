@@ -112,8 +112,6 @@ do
 		;;
 		r) ROOT_FORCE=1
 		;;
-		*) usage
-		;;
 	esac
 done
 # Shift all the Opts out to pass a clean $@ to the real CMD after execution
